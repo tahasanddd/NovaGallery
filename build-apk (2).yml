@@ -1,0 +1,59 @@
+name: Build Nova Gallery APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    name: Assemble Debug & Unsigned Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Nova Gallery Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK Licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Setup Gradle Wrapper & Cache
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build Debug APK (Installable directly on phone)
+        run: gradle assembleDebug --stacktrace
+
+      - name: Build Unsigned Release APK
+        run: gradle assembleRelease --stacktrace
+
+      - name: Verify Built APKs
+        run: |
+          ls -lh app/build/outputs/apk/debug/app-debug.apk
+          ls -lh app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: Upload app-debug.apk Artifact (Ready to Install)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Upload app-release-unsigned.apk Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-unsigned
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
